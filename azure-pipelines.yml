@@ -1,0 +1,60 @@
+trigger:
+  branches:
+    include:
+      - main  # Trigger on commits to the 'main' branch
+
+pool:
+  vmImage: 'windows-latest'  # Use the latest Windows-based image for the build agent
+
+steps:
+  # Step 1: Install .NET SDK if needed
+  - task: UseDotNet@2
+    displayName: 'Install .NET SDK'
+    inputs:
+      packageType: 'sdk'
+      version: '6.x'  # Ensure this matches the version of your .NET SDK (e.g., '5.x', '6.x', etc.)
+      installationPath: $(Agent.ToolsDirectory)/dotnet
+
+  # Step 2: List all files in the source directory (for debugging purposes)
+  - script: dir $(Build.SourcesDirectory) /s
+    displayName: 'List files in source directory'
+
+  # Step 3: Restore NuGet dependencies (make sure the path is correct)
+  - task: DotNetCoreCLI@2
+    displayName: 'Restore dependencies'
+    inputs:
+      command: restore
+      projects: '$(Build.SourcesDirectory)/webapp/MyWebapp.csproj'  # Adjust path based on actual location
+      arguments: '--verbosity detailed'  # Verbose logging to help debug
+
+  # Step 4: Build the application
+  - task: DotNetCoreCLI@2
+    displayName: 'Build application'
+    inputs:
+      command: build
+      projects: '$(Build.SourcesDirectory)/webapp/MyWebapp.csproj'  # Adjust path based on actual location
+      arguments: '--configuration Release'
+
+  # Step 5: Run unit tests (if applicable)
+  - task: DotNetCoreCLI@2
+    displayName: 'Run unit tests'
+    inputs:
+      command: test
+      projects: '$(Build.SourcesDirectory)/webapp/MyWebapp.csproj'  # Adjust path based on actual location
+      arguments: '--configuration Release --no-build'
+
+  # Step 6: Publish the application (optional)
+  - task: DotNetCoreCLI@2
+    displayName: 'Publish application'
+    inputs:
+      command: publish
+      projects: '$(Build.SourcesDirectory)/webapp/MyWebapp.csproj'
+      arguments: '--configuration Release --output $(Build.ArtifactStagingDirectory)'
+
+  # Step 7: Deploy to Azure App Service (optional)
+  - task: AzureWebApp@1
+    displayName: 'Deploy to Azure App Service'
+    inputs:
+      azureSubscription: 'Azure subscription 1'
+      appName: 'webappproj1'
+      package: '$(Build.ArtifactStagingDirectory)/MyWebapp.zip'
